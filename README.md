@@ -6,7 +6,7 @@ This project scrapes option chain data from [Groww](https://groww.in/options/) f
 
 ## 🚀 Features
 - Scrapes LTP (Last Traded Price) and option chain data.
-- Finds strikes closest to 1.1× LTP (Put) and 0.9× LTP (Call).
+- Finds strikes closest to 0.9 × LTP (Put) and 1.1 × LTP (Call).
 - Sends Telegram alerts only if:
   - Option premium > threshold (default: ₹4000)
   - Open Interest (OI) > 50
