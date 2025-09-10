@@ -80,7 +80,7 @@ class OptionChainScraper:
 
     def find_closest_strike(self, option_chain, target_price):
         """Finds the strike closest to a target price using bisect."""
-        strikes = [c["strikePrice"] for c in option_chain]
+        strikes = [c["strikePrice"]/100 for c in option_chain] # Strikes are multiplied by 100 for some reason
         pos = bisect_left(strikes, target_price)
         logging.debug(f"🎯 Target: {target_price}, Closest strike index: {pos}")
 
@@ -102,7 +102,8 @@ class OptionChainScraper:
             return
 
         option_chain = data_json["props"]["pageProps"]["data"]["optionChain"]["optionContracts"]
-
+        
+        import pdb;pdb.set_trace()
         # Targets
         target_put = 0.9 * self.ltp
         target_call = 1.1 * self.ltp
