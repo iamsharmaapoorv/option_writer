@@ -102,7 +102,6 @@ class OptionChainScraper:
 
         option_chain = data_json["props"]["pageProps"]["data"]["optionChain"]["optionContracts"]
         
-        import pdb;pdb.set_trace()
         # Targets
         target_put = 0.9 * self.ltp
         target_call = 1.1 * self.ltp
