@@ -63,7 +63,6 @@ class OptionChainScraper:
             raise RuntimeError(f"⚠️ Failed to initialize {self.stock_id}, no data returned")
 
         try:
-            # import pdb;pdb.set_trace()
             company_data = data_json["props"]["pageProps"]["data"]["company"]
             option_data = data_json["props"]["pageProps"]["data"]["optionChain"]
 
@@ -161,7 +160,10 @@ OI {put_oi} |
             return
 
         for expiry in self.expiry_dates:
-            self.process_expiry(expiry)
+            try:
+                self.process_expiry(expiry)
+            except Exception as error:
+                logging.error(f"Exception during process_expiry(): {error}")
 
 
 if __name__ == "__main__":
