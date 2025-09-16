@@ -144,7 +144,7 @@ OI {put_oi} |
             logging.debug(f"ℹ️ Skipped PUT alert: Premium={put_premium}, OI={put_oi}")
 
         if call_oi > self.min_oi and call_premium > self.min_premium:
-            msg = f"🚨 {self.stock_name} LTP {self.ltp} | \n Expiry {expiry_date} | \n {closest_call['ce']['longDisplayName']} | \n Premium {call_premium} | \n Lot {self.premium_lot_size} | \n Price {put_ltp} | \n OI {call_oi} | \n {self.url}"
+            msg = f"🚨 {self.stock_name} LTP {self.ltp} | \n Expiry {expiry_date} | \n {closest_call['ce']['longDisplayName']} | \n Premium {call_premium} | \n Lot {self.premium_lot_size} | \n Price {call_ltp} | \n OI {call_oi} | \n {self.url}"
             logging.info(f"🔔 Sending CALL alert: {msg}")
             self.alert_manager.send(msg)
         else:
