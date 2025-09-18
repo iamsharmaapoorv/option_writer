@@ -180,6 +180,9 @@ if __name__ == "__main__":
         "icici-bank-ltd": [1400],
         "hdfc-bank-ltd": [2200],
         "axis-bank-ltd": [1250],
+        "maruti-suzuki-india-ltd": [],
+        "nestle-india-ltd": [],
+        "apollo-hospitals-enterprise-ltd": []
     }
     for tracker, qty in trackers_qty.items():
         logging.info(f"🚀 Starting scraper for {tracker}")
