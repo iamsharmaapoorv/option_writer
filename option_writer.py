@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import logging
-import os
 from bisect import bisect_left
 from telegram_alert import TelegramAlert, AlertBase
 
@@ -11,7 +10,7 @@ from telegram_alert import TelegramAlert, AlertBase
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s",
-    )
+)
 
 
 class OptionChainScraper:
@@ -19,7 +18,14 @@ class OptionChainScraper:
 
     BASE_URL = "https://groww.in/options/"
 
-    def __init__(self, stock_id: str, alert_manager: AlertBase, premium_lot_size:int = None, min_premium: int = 4000, min_oi: int = 50):
+    def __init__(
+        self,
+        stock_id: str,
+        alert_manager: AlertBase,
+        premium_lot_size: int = None,
+        min_premium: int = 4000,
+        min_oi: int = 50,
+    ):
         self.stock_id = stock_id
         self.min_premium = min_premium if min_premium else 4000
         self.alert_manager = alert_manager
@@ -32,6 +38,7 @@ class OptionChainScraper:
         self.ltp = None
         self.lot_size = None
         self.expiry_dates = []
+        self.alert_buffer = []
 
     def fetch_page_json(self, expiry: str = None) -> dict:
         """Fetches page JSON (main or specific expiry)."""
@@ -79,7 +86,7 @@ class OptionChainScraper:
 
     def find_closest_strike(self, option_chain, target_price):
         """Finds the strike closest to a target price using bisect."""
-        strikes = [c["strikePrice"]/100 for c in option_chain] # Strikes are multiplied by 100 for some reason
+        strikes = [c["strikePrice"] / 100 for c in option_chain]  # Strikes are multiplied by 100 for some reason
         pos = bisect_left(strikes, target_price)
         logging.debug(f"🎯 Target: {target_price}, Closest strike index: {pos}")
 
@@ -90,7 +97,9 @@ class OptionChainScraper:
 
         before = option_chain[pos - 1]
         after = option_chain[pos]
-        return before if abs(before["strikePrice"] - target_price) <= abs(after["strikePrice"] - target_price) else after
+        return (
+            before if abs(before["strikePrice"] - target_price) <= abs(after["strikePrice"] - target_price) else after
+        )
 
     def process_expiry(self, expiry_date: str):
         """Process an expiry and send alerts if premiums cross threshold."""
@@ -101,7 +110,7 @@ class OptionChainScraper:
             return
 
         option_chain = data_json["props"]["pageProps"]["data"]["optionChain"]["optionContracts"]
-        
+
         # Targets
         target_put = 0.905 * self.ltp
         target_call = 1.095 * self.ltp
@@ -129,17 +138,32 @@ class OptionChainScraper:
         # Alerts
         if put_oi > self.min_oi and put_premium > self.min_premium:
             msg = f"🚨 {self.stock_name} LTP {self.ltp} | Expiry {expiry_date} | {closest_put['pe']['longDisplayName']} | Premium {put_premium} | Lot {self.premium_lot_size} | Price {put_ltp} | OI {put_oi} | {self.url}"
-            logging.info(f"🔔 Sending PUT alert: {msg}")
-            self.alert_manager.send(msg)
-        else:
-            logging.debug(f"ℹ️ Skipped PUT alert: Premium={put_premium}, OI={put_oi}")
+            self.alert_buffer.append(msg)
 
         if call_oi > self.min_oi and call_premium > self.min_premium:
-            msg = f"🚨 {self.stock_name} LTP {self.ltp} | Expiry {expiry_date} |  {closest_call['ce']['longDisplayName']} |  Premium {call_premium} |  Lot {self.premium_lot_size} |  Price {call_ltp} | OI {call_oi} | {self.url}"
-            logging.info(f"🔔 Sending CALL alert: {msg}")
-            self.alert_manager.send(msg)
-        else:
-            logging.debug(f"ℹ️ Skipped CALL alert: Premium={call_premium}, OI={call_oi}")
+            msg = f"🚨 {self.stock_name} LTP {self.ltp} | Expiry {expiry_date} | {closest_call['ce']['longDisplayName']} | Premium {call_premium} | Lot {self.premium_lot_size} | Price {call_ltp} | OI {call_oi} | {self.url}"
+            self.alert_buffer.append(msg)
+
+    def flush_alerts(self):
+        """Send alerts in batches of 4000 characters."""
+        if not self.alert_buffer:
+            logging.info("ℹ️ No alerts to send.")
+            return
+
+        batch = ""
+        for msg in self.alert_buffer:
+            # If adding this msg exceeds 4000 chars → send current batch
+            if len(batch) + len(msg) + 2 > 4000:
+                self.alert_manager.send(batch.strip())
+                batch = ""
+            batch += msg + "\n\n"
+
+        # Send last batch
+        if batch:
+            self.alert_manager.send(batch.strip())
+
+        # Clear buffer after sending
+        self.alert_buffer.clear()
 
     def run(self):
         """Run scraper for all expiry dates."""
@@ -154,6 +178,8 @@ class OptionChainScraper:
                 self.process_expiry(expiry)
             except Exception as error:
                 logging.error(f"Exception during process_expiry(): {error}")
+
+        self.flush_alerts()
 
 
 if __name__ == "__main__":
@@ -173,20 +199,20 @@ if __name__ == "__main__":
         "axis-bank-ltd": [1250],
         "maruti-suzuki-india-ltd": [],
         "nestle-india-ltd": [],
-        "apollo-hospitals-enterprise-ltd": []
+        "apollo-hospitals-enterprise-ltd": [],
     }
     for tracker, qty in trackers_qty.items():
         logging.info(f"🚀 Starting scraper for {tracker}")
         if tracker in {"nifty"}:
-            lot_size = qty[0] if len(qty)>0 else None
+            lot_size = qty[0] if len(qty) > 0 else None
         else:
             lot_size = None
 
         if tracker in {"nifty"}:
-            min_premium = qty[1]  if len(qty)>1 else None
+            min_premium = qty[1] if len(qty) > 1 else None
         else:
             min_premium = None
-            
+
         scraper = OptionChainScraper(tracker, telegram_alert_obj, lot_size, min_premium)
         scraper.run()
         logging.info(f"✅ Completed scraper for {tracker}")
