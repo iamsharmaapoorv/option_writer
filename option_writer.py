@@ -12,6 +12,34 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s",
 )
 
+ALERT_BUFFER = []
+
+
+def flush_alert_buffer_global(alert_manager: AlertBase, alert_buffer: list, max_len: int = 3900):
+    """Send alerts in batches up to `max_len` characters."""
+    if not alert_buffer:
+        logging.info("ℹ️ No alerts to send.")
+        return
+
+    current_batch = []
+    current_len = 0
+
+    for msg in alert_buffer:
+
+        msg_len = len(msg)
+        if current_len + msg_len > max_len:
+            alert_manager.send("\n\n".join(current_batch))
+            current_batch = [msg]
+            current_len = msg_len
+        else:
+            current_batch.append(msg)
+            current_len += msg_len
+
+    if current_batch:
+        alert_manager.send("\n\n".join(current_batch))
+
+    alert_buffer.clear()
+
 
 class OptionChainScraper:
     """Scrapes Groww option chain and evaluates premiums."""
@@ -25,20 +53,22 @@ class OptionChainScraper:
         premium_lot_size: int = None,
         min_premium: int = 4000,
         min_oi: int = 50,
+        use_global_buffer=False,
     ):
         self.stock_id = stock_id
-        self.min_premium = min_premium if min_premium else 4000
+        self.min_premium = min_premium
         self.alert_manager = alert_manager
         self.headers = {"User-Agent": "Mozilla/5.0"}
         self.min_oi = min_oi
         self.premium_lot_size = premium_lot_size
+        self.use_global_buffer = use_global_buffer
 
         # Fetched on initialization
         self.stock_name = None
         self.ltp = None
         self.lot_size = None
         self.expiry_dates = []
-        self.alert_buffer = []
+        self.alert_buffer = ALERT_BUFFER if use_global_buffer else []
 
     def fetch_page_json(self, expiry: str = None) -> dict:
         """Fetches page JSON (main or specific expiry)."""
@@ -98,7 +128,9 @@ class OptionChainScraper:
         before = option_chain[pos - 1]
         after = option_chain[pos]
         return (
-            before if abs(before["strikePrice"] - target_price) <= abs(after["strikePrice"] - target_price) else after
+            before
+            if abs(before["strikePrice"] / 100 - target_price) <= abs(after["strikePrice"] / 100 - target_price)
+            else after
         )
 
     def process_expiry(self, expiry_date: str):
@@ -145,25 +177,8 @@ class OptionChainScraper:
             self.alert_buffer.append(msg)
 
     def flush_alerts(self):
-        """Send alerts in batches of 4000 characters."""
-        if not self.alert_buffer:
-            logging.info("ℹ️ No alerts to send.")
-            return
-
-        batch = ""
-        for msg in self.alert_buffer:
-            # If adding this msg exceeds 4000 chars → send current batch
-            if len(batch) + len(msg) + 2 > 4000:
-                self.alert_manager.send(batch.strip())
-                batch = ""
-            batch += msg + "\n\n"
-
-        # Send last batch
-        if batch:
-            self.alert_manager.send(batch.strip())
-
-        # Clear buffer after sending
-        self.alert_buffer.clear()
+        logging.info(f"🚀 Starting global alert flush.")
+        flush_alert_buffer_global(self.alert_manager, self.alert_buffer)
 
     def run(self):
         """Run scraper for all expiry dates."""
@@ -179,7 +194,8 @@ class OptionChainScraper:
             except Exception as error:
                 logging.error(f"Exception during process_expiry(): {error}")
 
-        self.flush_alerts()
+        if not self.use_global_buffer:
+            self.flush_alerts()
 
 
 if __name__ == "__main__":
@@ -213,6 +229,9 @@ if __name__ == "__main__":
         else:
             min_premium = None
 
-        scraper = OptionChainScraper(tracker, telegram_alert_obj, lot_size, min_premium)
+        scraper = OptionChainScraper(tracker, telegram_alert_obj, lot_size, min_premium, use_global_buffer=True)
         scraper.run()
         logging.info(f"✅ Completed scraper for {tracker}")
+
+    logging.info(f"🚀 Starting global alert flush.")
+    flush_alert_buffer_global(telegram_alert_obj, ALERT_BUFFER)
