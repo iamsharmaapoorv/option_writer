@@ -56,7 +56,7 @@ class OptionChainScraper:
         use_global_buffer=False,
     ):
         self.stock_id = stock_id
-        self.min_premium = min_premium
+        self.min_premium = min_premium if min_premium else 4000
         self.alert_manager = alert_manager
         self.headers = {"User-Agent": "Mozilla/5.0"}
         self.min_oi = min_oi
@@ -167,6 +167,10 @@ class OptionChainScraper:
             f"CALL {closest_call['ce']['longDisplayName']} → {call_premium} (OI={call_oi})"
         )
 
+        if self.stock_name == "Infosys":
+            import pdb
+
+            pdb.set_trace()
         # Alerts
         if put_oi > self.min_oi and put_premium > self.min_premium:
             msg = f"🚨 {self.stock_name} LTP {self.ltp} | Expiry {expiry_date} | {closest_put['pe']['longDisplayName']} | Premium {put_premium} | Lot {self.premium_lot_size} | Price {put_ltp} | OI {put_oi} | {self.url}"
@@ -182,17 +186,25 @@ class OptionChainScraper:
 
     def run(self):
         """Run scraper for all expiry dates."""
+        expiry_error = ""
         try:
             self.initialize_stock_data()
         except RuntimeError as e:
-            logging.error(f"❌ Failed to initialize {self.stock_id}: {e}")
+            message = f"❌ Failed to initialize {self.stock_id}: {e}"
+            logging.error(message)
+            self.alert_manager.send(message)
             return
 
         for expiry in self.expiry_dates:
             try:
                 self.process_expiry(expiry)
             except Exception as error:
-                logging.error(f"Exception during process_expiry(): {error}")
+                message = f"Exception during process_expiry(): {error}"
+                logging.error(message)
+                expiry_error += message
+
+        if expiry_error:
+            self.alert_manager.send(expiry_error)
 
         if not self.use_global_buffer:
             self.flush_alerts()
