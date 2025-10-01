@@ -228,6 +228,15 @@ if __name__ == "__main__":
         "maruti-suzuki-india-ltd": [],
         "nestle-india-ltd": [],
         "apollo-hospitals-enterprise-ltd": [],
+        "sun-pharmaceutical-industries-ltd": [],
+        "coal-india-ltd": [],
+        "grasim-industries-ltd": [],
+        "dr-reddys-laboratories-ltd": [],
+        "titan-company-ltd": [],
+        "hdfc-standard-life-insurance-co-ltd": [],
+        "sbi-life-insurance-company-ltd": [],
+        "asian-paints-ltd": [],
+        "ultratech-cement-ltd": [],
     }
     for tracker, qty in trackers_qty.items():
         logging.info(f"🚀 Starting scraper for {tracker}")
