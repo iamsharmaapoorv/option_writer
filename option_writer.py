@@ -213,7 +213,7 @@ class OptionChainScraper:
 if __name__ == "__main__":
     telegram_alert_obj = TelegramAlert()
     trackers_qty = {
-        "nifty": [750, 30000],
+        "nifty": [780, 30000],
         "infosys-ltd": [800],
         "hindustan-unilever-ltd": [600],
         "reliance-industries-ltd": [1000],
@@ -237,6 +237,31 @@ if __name__ == "__main__":
         "sbi-life-insurance-company-ltd": [],
         "asian-paints-ltd": [],
         "ultratech-cement-ltd": [],
+        "avenue-supermarts-ltd": [],
+        "bajaj-auto-ltd": [],
+        "bajaj-finserv-ltd": [],
+        "britannia-industries-ltd": [],
+        "bosch-ltd": [],
+        "cipla-ltd": [],
+        "dabur-india-ltd": [],
+        "divis-laboratories-ltd": [],
+        "godrej-consumer-products-ltd": [],
+        "hero-motocorp-ltd": [],
+        "jsw-steel-ltd": [],
+        "lupin-ltd": [],
+        "mrf-ltd": [],
+        "marico-ltd": [],
+        "page-industries-ltd": [],
+        "sbi-cards-payment-services-ltd": [],
+        "srf-ltd": [],
+        "shree-cement-ltd": [],
+        "tech-mahindra-ltd": [],
+        "torrent-pharmaceuticals-ltd": [],
+        "united-spirits-ltd": [],
+        "colgatepalmolive-india-ltd": [],
+        "icici-lombard-general-insurance-co-ltd": [],
+        "power-grid-corporation-of-india-ltd": [],
+        "tata-global-beverages-ltd": []
     }
     for tracker, qty in trackers_qty.items():
         logging.info(f"🚀 Starting scraper for {tracker}")
