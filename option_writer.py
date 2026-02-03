@@ -6,7 +6,6 @@ from bisect import bisect_left
 from telegram_alert import TelegramAlert, AlertBase
 
 
-# --- Configure logging ---
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s",
@@ -167,10 +166,6 @@ class OptionChainScraper:
             f"CALL {closest_call['ce']['longDisplayName']} → {call_premium} (OI={call_oi})"
         )
 
-        if self.stock_name == "Infosys":
-            import pdb
-
-            pdb.set_trace()
         # Alerts
         if put_oi > self.min_oi and put_premium > self.min_premium:
             msg = f"🚨 {self.stock_name} LTP {self.ltp} | Expiry {expiry_date} | {closest_put['pe']['longDisplayName']} | Premium {put_premium} | Lot {self.premium_lot_size} | Price {put_ltp} | OI {put_oi} | {self.url}"
