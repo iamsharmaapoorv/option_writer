@@ -244,7 +244,7 @@ if __name__ == "__main__":
         "hero-motocorp-ltd": [],
         "jsw-steel-ltd": [],
         "lupin-ltd": [],
-        "mrf-ltd": [],
+        # "mrf-ltd": [],
         "marico-ltd": [],
         "page-industries-ltd": [],
         "sbi-cards-payment-services-ltd": [],
