@@ -4,6 +4,7 @@ import json
 import logging
 from bisect import bisect_left
 from telegram_alert import TelegramAlert, AlertBase
+from datetime import datetime, timedelta
 
 
 logging.basicConfig(
@@ -13,6 +14,11 @@ logging.basicConfig(
 
 ALERT_BUFFER = []
 
+def parse_date(date_str):
+    """Parse ISO date safely"""
+    if not date_str:
+        return None
+    return datetime.fromisoformat(date_str.replace("Z", "")).date()
 
 def flush_alert_buffer_global(alert_manager: AlertBase, alert_buffer: list, max_len: int = 3900):
     """Send alerts in batches up to `max_len` characters."""
@@ -44,6 +50,8 @@ class OptionChainScraper:
     """Scrapes Groww option chain and evaluates premiums."""
 
     BASE_URL = "https://groww.in/options/"
+    EVENTS_URL = "https://groww.in/stocks/{ticker}/corporate-actions"
+    EVENTS_WINDOW_DAYS = 90
 
     def __init__(
         self,
@@ -69,18 +77,13 @@ class OptionChainScraper:
         self.expiry_dates = []
         self.alert_buffer = ALERT_BUFFER if use_global_buffer else []
 
-    def fetch_page_json(self, expiry: str = None) -> dict:
-        """Fetches page JSON (main or specific expiry)."""
-        self.url = f"{self.BASE_URL}{self.stock_id}"
-        if expiry:
-            self.url += f"?expiry={expiry}"
-
-        logging.info(f"🌐 Fetching data for URL: {self.url}")
+    def fetch_page_json(self, url) -> dict:
+        logging.info(f"🌐 Fetching data for URL: {url}")
         try:
-            resp = requests.get(self.url, headers=self.headers, timeout=15)
+            resp = requests.get(url, headers=self.headers, timeout=15)
             resp.raise_for_status()
         except Exception as e:
-            logging.error(f"❌ Request failed for {self.url}: {e}")
+            logging.error(f"❌ Request failed for {url}: {e}")
             return {}
 
         soup = BeautifulSoup(resp.text, "html.parser")
@@ -88,13 +91,21 @@ class OptionChainScraper:
         if not script_tag:
             logging.error("❌ Could not find __NEXT_DATA__ script")
             return {}
-
+        
         return json.loads(script_tag.string)
+
+    def fetch_option_json(self, expiry: str = None) -> dict:
+        """Fetches page JSON (main or specific expiry)."""
+        self.url = f"{self.BASE_URL}{self.stock_id}"
+        if expiry:
+            self.url += f"?expiry={expiry}"
+
+        return self.fetch_page_json(self.url)
 
     def initialize_stock_data(self):
         """Fetch stock details like LTP, lot size, expiry dates."""
         logging.info(f"🔄 Initializing stock data for {self.stock_id}...")
-        data_json = self.fetch_page_json()
+        data_json = self.fetch_option_json()
         if not data_json:
             raise RuntimeError(f"⚠️ Failed to initialize {self.stock_id}, no data returned")
 
@@ -135,7 +146,7 @@ class OptionChainScraper:
     def process_expiry(self, expiry_date: str):
         """Process an expiry and send alerts if premiums cross threshold."""
         logging.info(f"📅 Processing expiry: {expiry_date}")
-        data_json = self.fetch_page_json(expiry_date)
+        data_json = self.fetch_option_json(expiry_date)
         if not data_json:
             logging.warning(f"⚠️ Skipping expiry {expiry_date} for {self.stock_id}, no data returned")
             return
@@ -166,14 +177,20 @@ class OptionChainScraper:
             f"CALL {closest_call['ce']['longDisplayName']} → {call_premium} (OI={call_oi})"
         )
 
+        will_alert = False
         # Alerts
         if put_oi > self.min_oi and put_premium > self.min_premium:
             msg = f"🚨 {self.stock_name} LTP {self.ltp} | Expiry {expiry_date} | {closest_put['pe']['longDisplayName']} | Premium {put_premium} | Lot {self.premium_lot_size} | Price {put_ltp} | OI {put_oi} | {self.url}"
             self.alert_buffer.append(msg)
+            will_alert = True
 
         if call_oi > self.min_oi and call_premium > self.min_premium:
             msg = f"🚨 {self.stock_name} LTP {self.ltp} | Expiry {expiry_date} | {closest_call['ce']['longDisplayName']} | Premium {call_premium} | Lot {self.premium_lot_size} | Price {call_ltp} | OI {call_oi} | {self.url}"
             self.alert_buffer.append(msg)
+            will_alert = True
+
+        if will_alert:
+            self.process_events()
 
     def flush_alerts(self):
         logging.info(f"🚀 Starting global alert flush.")
@@ -203,6 +220,40 @@ class OptionChainScraper:
 
         if not self.use_global_buffer:
             self.flush_alerts()
+    
+    def process_events(self):
+        try:
+            url = self.EVENTS_URL.format(ticker = self.stock_id)
+            data = self.fetch_page_json(url)
+            events = data["props"]["pageProps"]["preloadedEventsData"]
+
+            
+            today = datetime.today().date()
+            end_date = today + timedelta(days=self.EVENTS_WINDOW_DAYS)
+
+            for e in events:
+                date_fields = {
+                    "primaryDate": parse_date(e.get("primaryDate")),
+                    "exDate": parse_date(e.get("exDate")),
+                    "recordDate": parse_date(e.get("recordDate")),
+                }
+
+                # pick the earliest valid date
+                valid_dates = [d for d in date_fields.values() if d]
+                if not valid_dates:
+                    continue
+
+                event_date = min(valid_dates)
+
+                if today <= event_date <= end_date:
+                    msg = f"Event: 🚨 {self.stock_name} | LTP {self.ltp} | {e.get('eventTitle')} | {event_date} | {url}"
+                    self.alert_buffer.append(msg)
+                    
+        except Exception as error:
+            message = f"Exception during process_events(): {error}"
+            logging.error(message)
+            self.alert_buffer.append(message)
+
 
 
 if __name__ == "__main__":
