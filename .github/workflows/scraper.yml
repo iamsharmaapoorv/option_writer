@@ -2,9 +2,9 @@ name: Run Groww Scraper
 
 on:
   schedule:
-    # 8:40 AM IST = 03:10 UTC, choosing a time before mkt opening because the github action workflow runs late.
+    # 8:00 AM IST = 03:10 UTC, choosing a time before mkt opening because the github action workflow runs late.
     # If it starts running on time, switch it to 920AM IST
-    - cron: "10 3 * * 1-5"
+    - cron: "30 2 * * 1-5"
     # 12:20 PM IST = 06:50 UTC
     - cron: "20 7 * * 1-5"
   workflow_dispatch: # allow manual trigger
