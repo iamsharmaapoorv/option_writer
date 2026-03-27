@@ -1,0 +1,5 @@
+.env
+option_writer.env
+logs/
+__pycache__/
+telegram.log

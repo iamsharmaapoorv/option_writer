@@ -5,12 +5,9 @@ import logging
 from bisect import bisect_left
 from telegram_alert import TelegramAlert, AlertBase
 from datetime import datetime, timedelta
+from logging_utils import setup_logging
 
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s",
-)
+setup_logging("option_writer")
 
 ALERT_BUFFER = []
 
@@ -225,9 +222,9 @@ class OptionChainScraper:
         try:
             url = self.EVENTS_URL.format(ticker = self.stock_id)
             data = self.fetch_page_json(url)
-            events = data["props"]["pageProps"]["preloadedEventsData"]
+            page_props = data.get("props", {}).get("pageProps", {})
+            events = page_props.get("eventsData") or page_props.get("preloadedEventsData") or []
 
-            
             today = datetime.today().date()
             end_date = today + timedelta(days=self.EVENTS_WINDOW_DAYS)
 

@@ -3,13 +3,6 @@ import os
 import logging
 import requests
 
-
-# ===== LOGGER SETUP =====
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("telegram.log"), logging.StreamHandler()],
-)
 logger = logging.getLogger(__name__)
 
 
@@ -36,5 +29,4 @@ class TelegramAlert(AlertBase):
                 logger.debug(f"Alert sent successfully to chat_id: {self.chat_id}")
         except Exception as e:
             logger.error(f"Alert error: {e}")
-
 

@@ -1,12 +1,13 @@
 name: Run Groww Scraper
 
 on:
-  schedule:
-    # 700 AM IST = 1:30 UTC, choosing a time before mkt opening because the github action workflow runs late.
-    # If it starts running on time, switch it to 920AM IST
-    - cron: "30 1 * * 1-5"
-    # 12:20 PM IST = 06:50 UTC
-    - cron: "20 7 * * 1-5"
+  # schedule:
+  #   # TradingView returns at 8:45 AM IST = 03:15 UTC on weekdays
+  #   - cron: "15 3 * * 1-5"
+  #   # Option writer at 9:25 AM IST = 03:55 UTC on weekdays
+  #   - cron: "55 3 * * 1-5"
+  #   # Option writer at 1:00 PM IST = 07:30 UTC on weekdays
+  #   - cron: "30 7 * * 1-5"
   workflow_dispatch: # allow manual trigger
 
 jobs:
@@ -27,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run scraper
+      - name: Run option writer manually
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
