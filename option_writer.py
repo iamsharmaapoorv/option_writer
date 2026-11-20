@@ -158,11 +158,11 @@ class OptionChainScraper:
         closest_call = self.find_closest_strike(option_chain, target_call)
 
         # Extract live data safely
-        put_ltp = closest_put["pe"]["liveData"].get("ltp", 0) if closest_put.get("pe") else 0
-        call_ltp = closest_call["ce"]["liveData"].get("ltp", 0) if closest_call.get("ce") else 0
+        put_ltp = closest_put["pe"]["liveData"].get("ltp") or 0 if closest_put.get("pe") else 0
+        call_ltp = closest_call["ce"]["liveData"].get("ltp") or 0 if closest_call.get("ce") else 0
 
-        put_oi = closest_put["pe"]["liveData"].get("oi", 0) if closest_put.get("pe") else 0
-        call_oi = closest_call["ce"]["liveData"].get("oi", 0) if closest_call.get("ce") else 0
+        put_oi = closest_put["pe"]["liveData"].get("oi") or 0 if closest_put.get("pe") else 0
+        call_oi = closest_call["ce"]["liveData"].get("oi") or 0 if closest_call.get("ce") else 0
 
         self.premium_lot_size = self.premium_lot_size if self.premium_lot_size else 2 * self.lot_size
         put_premium = self.premium_lot_size * put_ltp

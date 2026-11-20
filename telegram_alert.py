@@ -23,6 +23,10 @@ class TelegramAlert(AlertBase):
         payload = {"chat_id": self.chat_id, "text": message, "parse_mode": "Markdown"}
         try:
             res = requests.post(url, data=payload)
+            if res.status_code == 400 and "parse entities" in res.text:
+                # Message has unbalanced Markdown (e.g. "_" in "process_expiry"); resend as plain text.
+                payload.pop("parse_mode")
+                res = requests.post(url, data=payload)
             if res.status_code != 200:
                 logger.error(f"Alert failed: {res.text}")
             else:
